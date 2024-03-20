@@ -23,12 +23,16 @@ import org.apache.rocketmq.client.impl.producer.TopicPublishInfo.QueueFilter;
 import org.apache.rocketmq.common.message.MessageQueue;
 
 public class MQFaultStrategy {
-    private LatencyFaultTolerance<String> latencyFaultTolerance;
+    // 记录每个broker的发送消息延迟
+    private LatencyFaultTolerance<String/*brokerName*/> latencyFaultTolerance;
+    // 配置项-是否开启消息发送延迟容错开关
     private volatile boolean sendLatencyFaultEnable;
     private volatile boolean startDetectorEnable;
+    // 配置项-延迟时间级别数组、对应不可用时间数组
     private long[] latencyMax = {50L, 100L, 550L, 1800L, 3000L, 5000L, 15000L};
     private long[] notAvailableDuration = {0L, 0L, 2000L, 5000L, 6000L, 10000L, 30000L};
 
+    // 过滤器，同一个线程过滤上一个发布的broker
     public static class BrokerFilter implements QueueFilter {
         private String lastBrokerName;
 

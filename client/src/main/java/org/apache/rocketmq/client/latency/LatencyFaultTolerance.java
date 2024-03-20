@@ -20,6 +20,7 @@ package org.apache.rocketmq.client.latency;
 public interface LatencyFaultTolerance<T> {
     /**
      * Update brokers' states, to decide if they are good or not.
+     * 更新broker的状态信息
      *
      * @param name Broker's name.
      * @param currentLatency Current message sending process's latency.

@@ -33,11 +33,13 @@ import org.apache.rocketmq.logging.org.slf4j.LoggerFactory;
 
 public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> {
     private final static Logger log = LoggerFactory.getLogger(MQFaultStrategy.class);
-    private final ConcurrentHashMap<String, FaultItem> faultItemTable = new ConcurrentHashMap<String, FaultItem>(16);
+    private final ConcurrentHashMap<String/*brokerName*/, FaultItem> faultItemTable = new ConcurrentHashMap<String, FaultItem>(16);
     private int detectTimeout = 200;
+    // 探测周期
     private int detectInterval = 2000;
     private final ThreadLocalIndex whichItemWorst = new ThreadLocalIndex();
 
+    // 定时探测开关
     private volatile boolean startDetectorEnable = false;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
         @Override
@@ -102,8 +104,11 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         FaultItem old = this.faultItemTable.get(name);
         if (null == old) {
             final FaultItem faultItem = new FaultItem(name);
+            // 设置发布消息延迟时间
             faultItem.setCurrentLatency(currentLatency);
+            // 更新不可用时长
             faultItem.updateNotAvailableDuration(notAvailableDuration);
+            // 设置是否可达
             faultItem.setReachable(reachable);
             old = this.faultItemTable.putIfAbsent(name, faultItem);
         }
@@ -158,6 +163,7 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         }
 
         if (!tmpList.isEmpty()) {
+            // 随机取一个可达的broker
             Collections.shuffle(tmpList);
             for (FaultItem faultItem : tmpList) {
                 if (faultItem.reachableFlag) {
@@ -185,11 +191,16 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         this.detectInterval = detectInterval;
     }
 
+    // 故障容错信息
     public class FaultItem implements Comparable<FaultItem> {
+        // brokerName
         private final String name;
+        // 当前延迟时间
         private volatile long currentLatency;
+        // 下一次可用时间
         private volatile long startTimestamp;
         private volatile long checkStamp;
+        // 是否可达
         private volatile boolean reachableFlag;
 
         public FaultItem(final String name) {

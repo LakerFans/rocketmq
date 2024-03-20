@@ -568,12 +568,14 @@ public class DefaultMessageStore implements MessageStore {
     public CompletableFuture<PutMessageResult> asyncPutMessage(MessageExtBrokerInner msg) {
 
         for (PutMessageHook putMessageHook : putMessageHookList) {
+            //消息写入commitLog前的钩子方法,此处实现了一下检查工作
             PutMessageResult handleResult = putMessageHook.executeBeforePutMessage(msg);
             if (handleResult != null) {
                 return CompletableFuture.completedFuture(handleResult);
             }
         }
 
+        // 校验
         if (msg.getProperties().containsKey(MessageConst.PROPERTY_INNER_NUM)
             && !MessageSysFlag.check(msg.getSysFlag(), MessageSysFlag.INNER_BATCH_FLAG)) {
             LOGGER.warn("[BUG]The message had property {} but is not an inner batch", MessageConst.PROPERTY_INNER_NUM);
@@ -637,6 +639,7 @@ public class DefaultMessageStore implements MessageStore {
 
     @Override
     public PutMessageResult putMessage(MessageExtBrokerInner msg) {
+        // 同步消息，其实也是等待异步写盘结果
         return waitForPutResult(asyncPutMessage(msg));
     }
 
